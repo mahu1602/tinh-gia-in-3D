@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tính giá thành in 3D FDM</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #64748b;
+      --border: #dbe3ef;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --success: #047857;
+      --warning-bg: #fff8e7;
+      --warning-border: #f4d58d;
+      --warning-text: #7c4a03;
+      --danger-bg: #fff1f2;
+      --danger-border: #fecdd3;
+      --danger-text: #9f1239;
+      --shadow: 0 12px 35px rgba(15, 23, 42, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .container {
+      width: min(1180px, calc(100% - 32px));
+      margin: 32px auto;
+    }
+
+    .hero { margin-bottom: 24px; }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 4vw, 42px);
+      letter-spacing: -0.03em;
+    }
+    .hero p { margin: 0; color: var(--muted); font-size: 16px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 22px;
+    }
+
+    .card h2 { margin: 0 0 18px; font-size: 21px; }
+
+    .section-title {
+      margin: 24px 0 12px;
+      font-size: 15px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 7px; }
+    .field.full { grid-column: 1 / -1; }
+
+    label { font-size: 14px; font-weight: 700; }
+    .hint { font-size: 12px; color: var(--muted); font-weight: 500; line-height: 1.4; }
+
+    input, select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      padding: 11px 12px;
+      outline: none;
+      transition: 0.2s ease;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+
+    .quick-markup {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .quick-markup button {
+      padding: 7px 10px;
+      font-size: 13px;
+      border-radius: 9px;
+      background: #e9eef8;
+      color: var(--text);
+    }
+
+    .quick-markup button.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    button {
+      border: none;
+      border-radius: 11px;
+      padding: 11px 16px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+
+    .primary { background: var(--primary); color: white; }
+    .primary:hover { background: var(--primary-dark); }
+    .secondary { background: #e9eef8; color: var(--text); }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .metric {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      background: #fbfdff;
+    }
+
+    .metric .label { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+    .metric .value {
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+    }
+
+    .metric.highlight {
+      border-color: rgba(37, 99, 235, 0.35);
+      background: rgba(37, 99, 235, 0.06);
+    }
+
+    .metric.success {
+      border-color: rgba(4, 120, 87, 0.3);
+      background: rgba(4, 120, 87, 0.06);
+    }
+
+    .breakdown {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+
+    .breakdown th, .breakdown td {
+      padding: 11px 4px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      font-size: 14px;
+    }
+
+    .breakdown th:last-child, .breakdown td:last-child {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .breakdown tfoot td {
+      font-weight: 900;
+      border-bottom: none;
+      padding-top: 14px;
+    }
+
+    .note {
+      margin-top: 16px;
+      padding: 13px 14px;
+      border-radius: 12px;
+      background: var(--warning-bg);
+      color: var(--warning-text);
+      border: 1px solid var(--warning-border);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .formula {
+      margin-top: 16px;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px dashed var(--border);
+      background: #fafcff;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+    }
+
+    .status {
+      margin-top: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--success);
+      min-height: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      .container { width: min(100% - 20px, 1180px); margin: 18px auto; }
+      .card { padding: 16px; border-radius: 14px; }
+      .form-grid, .summary-grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="hero">
+      <h1>Tính giá thành in 3D FDM</h1>
+      <p>Dành cho các dòng máy Bambu Lab</p>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>Thông số sản phẩm</h2>
+
+        <div class="form-grid">
+          <div class="field full">
+            <label for="productName">Tên sản phẩm</label>
+            <input id="productName" type="text" value="" />
+          </div>
+
+          <div class="field">
+            <label for="printer">Máy in</label>
+            <select id="printer">
+              <option value="a1">Bambu Lab A1</option>
+              <option value="a2l">Bambu Lab A2L</option>
+              <option value="p1s" selected>Bambu Lab P1S</option>
+              <option value="p2s">Bambu Lab P2S</option>
+              <option value="x2d">Bambu Lab X2D</option>
+              <option value="h2s">Bambu Lab H2S</option>
+              <option value="h2d">Bambu Lab H2D</option>
+              <option value="h2c">Bambu Lab H2C</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="material">Vật liệu</label>
+            <select id="material">
+              <option value="PLA">PLA</option>
+              <option value="PETG" selected>PETG</option>
+              <option value="ABS">ABS</option>
+              <option value="ASA">ASA</option>
+              <option value="TPU">TPU</option>
+              <option value="PC">PC</option>
+              <option value="PA">PA / Nylon</option>
+              <option value="CF">CF/GF kỹ thuật</option>
+              <option value="Other">Khác</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="filamentPrice">Giá filament (đ/kg)</label>
+            <input id="filamentPrice" type="number" min="0" step="1000" value="150000" />
+          </div>
+
+          <div class="field">
+            <label for="weight">Khối lượng mẫu (g)</label>
+            <input id="weight" type="number" min="0" step="0.1" value="20" />
+          </div>
+
+          <div class="field">
+            <label for="printHoursInput">Thời gian in (giờ)</label>
+            <input id="printHoursInput" type="number" min="0" step="1" value="0" />
+          </div>
+
+          <div class="field">
+            <label for="printMinutesInput">Thời gian in (phút)</label>
+            <input id="printMinutesInput" type="number" min="0" step="1" value="50" />
+          </div>
+        </div>
+
+        <div class="section-title">Điện và hao mòn</div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="power">Công suất trung bình (W)</label>
+            <input id="power" type="number" min="0" step="1" value="150" />
+            <span class="hint">Tự động thay đổi theo máy in và vật liệu; vẫn có thể chỉnh tay nếu có số đo thực tế.</span>
+          </div>
+
+          <div class="field">
+            <label for="electricPrice">Giá điện (đ/kWh)</label>
+            <input id="electricPrice" type="number" min="0" step="100" value="4000" />
+          </div>
+
+          <div class="field">
+            <label for="depreciationPerMinute">Hao mòn máy (đ/phút)</label>
+            <input id="depreciationPerMinute" type="number" min="0" step="1" value="50" />
+          </div>
+
+          <div class="field">
+            <label for="laborCost">Nhân công trực tiếp (đ/sản phẩm)</label>
+            <input id="laborCost" type="number" min="0" step="500" value="0" />
+          </div>
+        </div>
+
+        <div class="section-title">Đóng gói và chi phí khác</div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="packagingCost">Đóng gói (đ/sản phẩm)</label>
+            <input id="packagingCost" type="number" min="0" step="100" value="3300" />
+          </div>
+
+          <div class="field">
+            <label for="componentCost">Linh kiện bổ sung (đ)</label>
+            <input id="componentCost" type="number" min="0" step="500" value="0" />
+          </div>
+
+          <div class="field">
+            <label for="failureRate">Tỷ lệ lỗi/hoàn/bảo hành (%)</label>
+            <input id="failureRate" type="number" min="0" max="100" step="0.1" value="3" />
+          </div>
+
+          <div class="field">
+            <label for="fixedOverhead">Chi phí chung phân bổ (đ/sản phẩm)</label>
+            <input id="fixedOverhead" type="number" min="0" step="500" value="0" />
+          </div>
+        </div>
+
+        <div class="section-title">Bán hàng và lợi nhuận</div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="sellingFeeRate">Phí sàn + thuế + quảng cáo (%)</label>
+            <input id="sellingFeeRate" type="number" min="0" max="99" step="0.1" value="30" />
+          </div>
+
+          <div class="field">
+            <label for="markupRate">Lãi mong muốn trên giá vốn (%)</label>
+            <input id="markupRate" type="number" min="0" step="1" value="150" />
+            <div class="quick-markup" id="quickMarkup">
+              <button type="button" data-markup="50">50%</button>
+              <button type="button" data-markup="100">100%</button>
+              <button type="button" data-markup="150" class="active">150%</button>
+              <button type="button" data-markup="200">200%</button>
+              <button type="button" data-markup="250">250%</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="rounding">Làm tròn giá bán</label>
+            <select id="rounding">
+              <option value="1000">1.000 đ</option>
+              <option value="5000" selected>5.000 đ</option>
+              <option value="10000">10.000 đ</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="manualPrice">Giá bán thực tế muốn kiểm tra (đ)</label>
+            <input id="manualPrice" type="number" min="0" step="1000" value="90000" />
+          </div>
+        </div>
+
+        <div class="button-row">
+          <button class="primary" id="calculateBtn" type="button">Tính giá</button>
+          <button class="secondary" id="resetBtn" type="button">Đặt lại</button>
+          <button class="secondary" id="saveBtn" type="button">Lưu cấu hình</button>
+        </div>
+        <div class="status" id="status"></div>
+      </div>
+
+      <div class="card">
+        <h2>Kết quả</h2>
+
+        <div class="summary-grid">
+          <div class="metric">
+            <div class="label">Giá thành thực tế</div>
+            <div class="value" id="totalCost">0 đ</div>
+          </div>
+
+          <div class="metric highlight">
+            <div class="label">Giá bán đề xuất</div>
+            <div class="value" id="suggestedPrice">0 đ</div>
+          </div>
+
+          <div class="metric success">
+            <div class="label">Lợi nhuận dự kiến</div>
+            <div class="value" id="expectedProfit">0 đ</div>
+          </div>
+
+          <div class="metric">
+            <div class="label">Lợi nhuận / giờ máy</div>
+            <div class="value" id="profitPerHour">0 đ</div>
+          </div>
+
+          <div class="metric">
+            <div class="label">ROI trên giá vốn</div>
+            <div class="value" id="expectedRoi">0%</div>
+          </div>
+
+          <div class="metric">
+            <div class="label">Biên lợi nhuận ròng</div>
+            <div class="value" id="expectedMargin">0%</div>
+          </div>
+        </div>
+
+        <table class="breakdown">
+          <thead>
+            <tr><th>Khoản mục</th><th>Chi phí</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Filament</td><td id="materialCost">0 đ</td></tr>
+            <tr><td>Điện</td><td id="electricCost">0 đ</td></tr>
+            <tr><td>Hao mòn máy</td><td id="machineCost">0 đ</td></tr>
+            <tr><td>Nhân công</td><td id="laborCostResult">0 đ</td></tr>
+            <tr><td>Đóng gói</td><td id="packagingCostResult">0 đ</td></tr>
+            <tr><td>Linh kiện</td><td id="componentCostResult">0 đ</td></tr>
+            <tr><td>Chi phí chung</td><td id="overheadCostResult">0 đ</td></tr>
+            <tr><td>Dự phòng lỗi/hoàn/bảo hành</td><td id="riskCost">0 đ</td></tr>
+          </tbody>
+          <tfoot>
+            <tr><td>Tổng giá thành</td><td id="totalCostTable">0 đ</td></tr>
+          </tfoot>
+        </table>
+
+        <div class="section-title">Kiểm tra giá bán thực tế</div>
+
+        <table class="breakdown">
+          <tbody>
+            <tr><td>Phí bán hàng</td><td id="manualSellingFee">0 đ</td></tr>
+            <tr><td>Lợi nhuận thực tế</td><td id="manualProfit">0 đ</td></tr>
+            <tr><td>ROI trên giá vốn</td><td id="manualRoi">0%</td></tr>
+            <tr><td>Biên lợi nhuận ròng</td><td id="manualMargin">0%</td></tr>
+            <tr><td>Lợi nhuận / giờ máy</td><td id="manualProfitPerHour">0 đ</td></tr>
+          </tbody>
+        </table>
+
+        <div class="note" id="advice">Hãy nhập thông số và nhấn “Tính giá”.</div>
+        <footer>
+          <p>Designed & Developed by <strong>Manh Hung</strong></p>
+          <p>
+            Contact for work:
+            <a href="mailto:manhhungg9999@gmail.com">
+              manhhungg9999@gmail.com
+            </a>
+            <p>
+            · Zalo:
+            <a href="https://zalo.me/0349949369" target="_blank">
+              0349949369
+            </a></p>
+          </p>
+        </footer>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const ids = [
+      "productName", "printer", "material", "filamentPrice", "weight",
+      "printHoursInput", "printMinutesInput", "power", "electricPrice", "depreciationPerMinute", "laborCost",
+      "packagingCost", "componentCost", "failureRate", "fixedOverhead",
+      "sellingFeeRate", "markupRate", "rounding", "manualPrice"
+    ];
+
+    const number = (id) => {
+      const value = Number(document.getElementById(id).value);
+      return Number.isFinite(value) ? value : 0;
+    };
+
+    const formatMoney = (value) =>
+      new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+        maximumFractionDigits: 0
+      }).format(Math.round(value));
+
+    const formatPercent = (value) =>
+      `${value.toLocaleString("vi-VN", { maximumFractionDigits: 1 })}%`;
+
+    function syncQuickMarkup() {
+      const current = number("markupRate");
+      document.querySelectorAll("#quickMarkup button").forEach((button) => {
+        button.classList.toggle("active", Number(button.dataset.markup) === current);
+      });
+    }
+
+    // Công suất trung bình ước tính theo tổ hợp máy + vật liệu.
+    // Hao mòn máy đang dùng chu kỳ thu hồi vốn 4.000 giờ.
+    const printerProfiles = {
+      a1:  { depreciation: 24,  power: { PLA: 95,  PETG: 105, ABS: 125, ASA: 125, TPU: 90,  PC: 125, PA: 120, CF: 120, Other: 105 } },
+      a2l: { depreciation: 48,  power: { PLA: 110, PETG: 125, ABS: 155, ASA: 155, TPU: 105, PC: 160, PA: 150, CF: 150, Other: 125 } },
+      p1s: { depreciation: 39,  power: { PLA: 120, PETG: 135, ABS: 180, ASA: 180, TPU: 115, PC: 190, PA: 180, CF: 180, Other: 140 } },
+      p2s: { depreciation: 60,  power: { PLA: 140, PETG: 160, ABS: 220, ASA: 220, TPU: 135, PC: 235, PA: 225, CF: 225, Other: 165 } },
+      x2d: { depreciation: 115, power: { PLA: 180, PETG: 210, ABS: 300, ASA: 300, TPU: 170, PC: 330, PA: 315, CF: 315, Other: 220 } },
+      h2s: { depreciation: 140, power: { PLA: 300, PETG: 340, ABS: 520, ASA: 520, TPU: 285, PC: 570, PA: 550, CF: 550, Other: 360 } },
+      h2d: { depreciation: 190, power: { PLA: 350, PETG: 400, ABS: 620, ASA: 620, TPU: 330, PC: 680, PA: 650, CF: 650, Other: 420 } },
+      h2c: { depreciation: 280, power: { PLA: 380, PETG: 430, ABS: 680, ASA: 680, TPU: 360, PC: 740, PA: 710, CF: 710, Other: 450 } }
+    };
+
+    function applyPrinterProfile() {
+      const printer = document.getElementById("printer").value;
+      const material = document.getElementById("material").value;
+      const profile = printerProfiles[printer] || printerProfiles.p1s;
+      document.getElementById("depreciationPerMinute").value = profile.depreciation;
+      document.getElementById("power").value = profile.power[material] ?? profile.power.Other;
+      calculate();
+    }
+
+    function applyMaterialPower() {
+      const printer = document.getElementById("printer").value;
+      const material = document.getElementById("material").value;
+      const profile = printerProfiles[printer] || printerProfiles.p1s;
+      document.getElementById("power").value = profile.power[material] ?? profile.power.Other;
+      calculate();
+    }
+
+    function calculate() {
+      const filamentPrice = number("filamentPrice");
+      const weight = number("weight");
+      const inputHours = Math.max(number("printHoursInput"), 0);
+      const inputMinutes = Math.max(number("printMinutesInput"), 0);
+      const printMinutes = inputHours * 60 + inputMinutes;
+      const power = number("power");
+      const electricPrice = number("electricPrice");
+      const depreciationPerMinute = number("depreciationPerMinute");
+      const laborCost = number("laborCost");
+      const packagingCost = number("packagingCost");
+      const componentCost = number("componentCost");
+      const failureRate = number("failureRate") / 100;
+      const fixedOverhead = number("fixedOverhead");
+      const sellingFeeRate = number("sellingFeeRate") / 100;
+      const markupRate = number("markupRate") / 100;
+      const rounding = Math.max(number("rounding"), 1);
+      const manualPrice = number("manualPrice");
+
+      // Khối lượng nhập là Total filament từ slicer, đã gồm support/brim nếu slicer tính.
+      const materialCost = (weight / 1000) * filamentPrice;
+      const printHours = printMinutes / 60;
+      const electricCost = (power / 1000) * printHours * electricPrice;
+      const machineCost = printMinutes * depreciationPerMinute;
+
+      const baseCost =
+        materialCost +
+        electricCost +
+        machineCost +
+        laborCost +
+        packagingCost +
+        componentCost +
+        fixedOverhead;
+
+      const riskCost = baseCost * failureRate;
+      const totalCost = baseCost + riskCost;
+
+      let suggestedPrice = 0;
+      let warning = "";
+
+      if (sellingFeeRate >= 1) {
+        warning = "Phí bán hàng phải nhỏ hơn 100%.";
+      } else {
+        const targetNetRevenue = totalCost * (1 + markupRate);
+        suggestedPrice = Math.ceil((targetNetRevenue / (1 - sellingFeeRate)) / rounding) * rounding;
+      }
+
+      const expectedSellingFee = suggestedPrice * sellingFeeRate;
+      const expectedProfit = suggestedPrice - expectedSellingFee - totalCost;
+      const profitPerHour = printHours > 0 ? expectedProfit / printHours : 0;
+      const expectedRoi = totalCost > 0 ? (expectedProfit / totalCost) * 100 : 0;
+      const expectedMargin = suggestedPrice > 0 ? (expectedProfit / suggestedPrice) * 100 : 0;
+
+      const manualSellingFee = manualPrice * sellingFeeRate;
+      const manualProfit = manualPrice - manualSellingFee - totalCost;
+      const manualRoi = totalCost > 0 ? (manualProfit / totalCost) * 100 : 0;
+      const manualMargin = manualPrice > 0 ? (manualProfit / manualPrice) * 100 : 0;
+      const manualProfitPerHour = printHours > 0 ? manualProfit / printHours : 0;
+
+      document.getElementById("materialCost").textContent = formatMoney(materialCost);
+      document.getElementById("electricCost").textContent = formatMoney(electricCost);
+      document.getElementById("machineCost").textContent = formatMoney(machineCost);
+      document.getElementById("laborCostResult").textContent = formatMoney(laborCost);
+      document.getElementById("packagingCostResult").textContent = formatMoney(packagingCost);
+      document.getElementById("componentCostResult").textContent = formatMoney(componentCost);
+      document.getElementById("overheadCostResult").textContent = formatMoney(fixedOverhead);
+      document.getElementById("riskCost").textContent = formatMoney(riskCost);
+      document.getElementById("totalCost").textContent = formatMoney(totalCost);
+      document.getElementById("totalCostTable").textContent = formatMoney(totalCost);
+      document.getElementById("suggestedPrice").textContent = warning ? "Không hợp lệ" : formatMoney(suggestedPrice);
+      document.getElementById("expectedProfit").textContent = warning ? "0 đ" : formatMoney(expectedProfit);
+      document.getElementById("profitPerHour").textContent = warning ? "0 đ" : formatMoney(profitPerHour);
+      document.getElementById("expectedRoi").textContent = warning ? "0%" : formatPercent(expectedRoi);
+      document.getElementById("expectedMargin").textContent = warning ? "0%" : formatPercent(expectedMargin);
+
+      document.getElementById("manualSellingFee").textContent = formatMoney(manualSellingFee);
+      document.getElementById("manualProfit").textContent = formatMoney(manualProfit);
+      document.getElementById("manualRoi").textContent = formatPercent(manualRoi);
+      document.getElementById("manualMargin").textContent = formatPercent(manualMargin);
+      document.getElementById("manualProfitPerHour").textContent = formatMoney(manualProfitPerHour);
+
+      syncQuickMarkup();
+
+      const advice = document.getElementById("advice");
+
+      if (warning) {
+        advice.textContent = warning;
+        advice.style.background = "var(--danger-bg)";
+        advice.style.borderColor = "var(--danger-border)";
+        advice.style.color = "var(--danger-text)";
+        return;
+      }
+
+      advice.style.background = "var(--warning-bg)";
+      advice.style.borderColor = "var(--warning-border)";
+      advice.style.color = "var(--warning-text)";
+
+      const targetMarkupPercent = markupRate * 100;
+
+      if (manualProfit < 0) {
+        advice.textContent =
+          "Giá bán thực tế đang thấp hơn tổng chi phí sau khi trừ phí bán hàng. Bạn sẽ bị lỗ.";
+      } else if (manualRoi < targetMarkupPercent) {
+        advice.textContent =
+          `Giá bán thực tế mới đạt ROI ${formatPercent(manualRoi)}, thấp hơn mục tiêu ${formatPercent(targetMarkupPercent)}. ` +
+          `Giá đề xuất gần nhất là ${formatMoney(suggestedPrice)}.`;
+      } else {
+        advice.textContent =
+          `Giá bán thực tế đã đạt mục tiêu. Lợi nhuận ước tính ${formatMoney(manualProfit)}, ` +
+          `ROI ${formatPercent(manualRoi)} và biên lợi nhuận ròng ${formatPercent(manualMargin)}.`;
+      }
+    }
+
+    function saveConfig() {
+      const data = {};
+      ids.forEach((id) => {
+        data[id] = document.getElementById(id).value;
+      });
+
+      try {
+        localStorage.setItem("fdmCostCalculatorMarkupConfig", JSON.stringify(data));
+        const status = document.getElementById("status");
+        status.textContent = "Đã lưu cấu hình trên trình duyệt.";
+        setTimeout(() => (status.textContent = ""), 2500);
+      } catch {
+        document.getElementById("status").textContent =
+          "Trình duyệt không cho phép lưu cấu hình.";
+      }
+    }
+
+    function loadConfig() {
+      try {
+        const raw = localStorage.getItem("fdmCostCalculatorMarkupConfig");
+        if (!raw) return;
+
+        const data = JSON.parse(raw);
+        ids.forEach((id) => {
+          if (data[id] !== undefined) {
+            document.getElementById(id).value = data[id];
+          }
+        });
+      } catch {
+        // Bỏ qua dữ liệu lỗi.
+      }
+    }
+
+    function resetForm() {
+      localStorage.removeItem("fdmCostCalculatorMarkupConfig");
+      location.reload();
+    }
+
+    document.getElementById("calculateBtn").addEventListener("click", calculate);
+    document.getElementById("resetBtn").addEventListener("click", resetForm);
+    document.getElementById("saveBtn").addEventListener("click", saveConfig);
+    document.getElementById("printer").addEventListener("change", applyPrinterProfile);
+    document.getElementById("material").addEventListener("change", applyMaterialPower);
+
+    document.querySelectorAll("#quickMarkup button").forEach((button) => {
+      button.addEventListener("click", () => {
+        document.getElementById("markupRate").value = button.dataset.markup;
+        calculate();
+      });
+    });
+
+    ids.forEach((id) => {
+      document.getElementById(id).addEventListener("input", calculate);
+      document.getElementById(id).addEventListener("change", calculate);
+    });
+
+    loadConfig();
+    calculate();
+  </script>
+</body>
+</html>
